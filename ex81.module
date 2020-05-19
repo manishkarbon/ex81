@@ -1,0 +1,146 @@
+<?php
+use \Drupal\field\Entity\FieldStorageConfig;
+use \Drupal\field\Entity\FieldConfig;
+
+/*
+changed
+body
+created
+field_summarybig
+path
+promote
+status
+sticky
+title
+uid
+langcode
+revision_log
+revision
+meta
+menu
+nid
+*/
+function mymodule_form_submit(array $form, \Drupal\Core\Form\FormStateInterface $form_state){
+   //var_dump($form['field_summarybig']);field_summarybig[0][value]
+   //echo $form_state['field_summarybig']['widget'][0]['target_id']['#default_value'];
+   //echo $form_state['field_summarybig'][0]['#value'];
+   //echo $form['field_summarybig']['widget']['#value'];
+    
+   
+   //echo "<pre>";
+   
+   //print_r($form_state->getValue('field_summarybig'));
+	//echo "</pre>";
+    //dpm($form[field_select_field]);
+
+    //print_r( $form['field_summarybig'][widget]['#options'][$v]);
+   
+   
+   // Code.
+    /*$html = $form_state->getValues('title');
+	$mpdf = new \Mpdf\Mpdf(['tempDir' => 'sites/default/files/tmp']); $mpdf->WriteHTML($html);
+	$mpdf->Output('file.pdf', 'D');
+	*/
+	$mpdf = new \Mpdf\Mpdf(['tempDir' => 'sites/default/files/tmp']);
+	$value=$form_state->getValue('field_summarybig')[0]['value'];
+	$mpdf->WriteHTML($value);
+	$mpdf->Output('file.pdf', 'D');
+	exit(0);
+    /*foreach ($form_state->getValues() as $key => $value) {
+		
+		$value=$form_state->getValue(['title']);
+	}*/
+	//$mpdf = new \Mpdf\Mpdf(['tempDir' => 'sites/default/files/tmp']); $mpdf->WriteHTML($html);
+	
+	//die();
+}
+
+function ex81_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  if($form_id=="node_hgs_form")
+  {
+
+/*foreach (array_keys($form['actions']) as $action) {
+    if ($action != 'preview' && isset($form['actions'][$action]['#type']) && $form['actions'][$action]['#type'] === 'submit') {
+      $form['actions'][$action]['#submit'][] = 'mymodule_form_submit';
+    }
+  }*/
+
+   $fields = [
+     'field_hgs' => [
+       'table' => 'node__field_hgs',
+       'revision_table' => 'node_revision__field_hgs',
+       'format_col' => 'field_hgs_format',
+     ],
+   ];
+
+   $database = \Drupal::database();
+
+   foreach ($fields as $field_name => $f) {
+     $table = $f['table'];
+     $revision_table = $f['revision_table'];
+     $entity_type = 'node';
+
+     // Get field storage.
+     $field_storage = FieldStorageConfig::loadByName($entity_type, $field_name);
+
+     // Check if field exist.
+     if (is_null($field_storage)) {
+       continue;
+     }
+
+     // Store data to an array so that we can restore it once the update is complete.
+     $rows = NULL;
+     $revision_rows = NULL;
+     if ($database->schema()->tableExists($table)) {
+       $rows = $database->select($table, 'n')->fields('n')->execute()
+         ->fetchAll();
+       $revision_rows = $database->select($revision_table, 'n')->fields('n')->execute()
+         ->fetchAll();
+     }
+
+     // Save new field configs & delete existing fields.
+     $new_fields = array();
+     foreach ($field_storage->getBundles() as $bundle => $label) {
+       $field = FieldConfig::loadByName($entity_type, $bundle, $field_name);
+       $new_field = $field->toArray();
+       $new_field['field_type'] = 'text_long';
+       $new_fields[] = $new_field;
+       // Delete field.
+       $field->delete();
+     }
+
+     // Create new storage configs from existing.
+     $new_field_storage = $field_storage->toArray();
+     $new_field_storage['type'] = 'text_long';
+     $new_field_storage['module'] = 'text_long';
+
+     // Purge deleted fields data to create new fields.
+     field_purge_batch(250);
+
+     // Create new fieldstorage.
+     FieldStorageConfig::create($new_field_storage)->save();
+
+     // Create new fields for all bundles.
+     foreach ($new_fields as $new_field) {
+       $new_field = FieldConfig::create($new_field);
+       $new_field->save();
+     }
+     // Restore existing data in fields & revision tables.
+     if (!is_null($rows)) {
+       foreach ($rows as $row) {
+         $row = (array) $row;
+         $row[$f['format_col']] = 'full_html';
+         $database->insert($table)->fields($row)->execute();
+       }
+     }
+     if (!is_null($revision_rows)) {
+       foreach ($revision_rows as $row) {
+         $row = (array) $row;
+         $row[$f['format_col']] = 'full_html';
+         $database->insert($revision_table)->fields($row)->execute();
+       }
+     }
+   }
+ }
+}
+?>
